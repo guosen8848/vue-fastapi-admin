@@ -21,6 +21,7 @@ from app.core.exceptions import (
     ResponseValidationError,
     ResponseValidationHandle,
 )
+from app.knowledge import init_knowledge_data
 from app.log import logger
 from app.models.admin import Api, Menu, Role
 from app.schemas.menus import MenuType
@@ -230,4 +231,5 @@ async def init_data():
     await init_superuser()
     await init_menus()
     await init_apis()
+    await init_knowledge_data()
     await init_roles()

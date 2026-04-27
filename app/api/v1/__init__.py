@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.dependency import DependPermission
+from app.knowledge import knowledge_router
 
 from .apis import apis_router
 from .auditlog import auditlog_router
@@ -18,4 +19,5 @@ v1_router.include_router(roles_router, prefix="/role", dependencies=[DependPermi
 v1_router.include_router(menus_router, prefix="/menu", dependencies=[DependPermission])
 v1_router.include_router(apis_router, prefix="/api", dependencies=[DependPermission])
 v1_router.include_router(depts_router, prefix="/dept", dependencies=[DependPermission])
+v1_router.include_router(knowledge_router, prefix="/knowledge", dependencies=[DependPermission])
 v1_router.include_router(auditlog_router, prefix="/auditlog", dependencies=[DependPermission])
