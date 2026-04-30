@@ -1,5 +1,5 @@
 <script setup>
-import { h, onMounted, ref, resolveDirective, withDirectives } from 'vue'
+import { computed, h, onMounted, ref, resolveDirective, withDirectives } from 'vue'
 import {
   NButton,
   NDynamicTags,
@@ -21,19 +21,29 @@ import TheIcon from '@/components/icon/TheIcon.vue'
 
 import { formatDate, renderIcon } from '@/utils'
 import { useCRUD } from '@/composables'
+import { useUserStore } from '@/store'
 import knowledgeApi from '@/api/knowledge'
+
+import ArticleBlockEditor from '../components/ArticleBlockEditor.vue'
+import { normalizeBlocks, stripBlockClientFields } from '../utils/blocks'
 
 defineOptions({ name: '知识文章' })
 
 const $table = ref(null)
 const queryItems = ref({})
 const vPermission = resolveDirective('permission')
+const userStore = useUserStore()
+
+const isAdmin = computed(() => {
+  return userStore.isSuperUser || userStore.role.some((role) => (role.name || role) === '管理员')
+})
 
 const initForm = {
   title: '',
   category_id: null,
   summary: '',
   content: '',
+  blocks: [],
   tags: [],
   status: 'draft',
   is_top: false,
@@ -52,8 +62,8 @@ const {
 } = useCRUD({
   name: '知识文章',
   initForm,
-  doCreate: knowledgeApi.createKnowledgeArticle,
-  doUpdate: knowledgeApi.updateKnowledgeArticle,
+  doCreate: (payload) => knowledgeApi.createKnowledgeArticle(formatArticlePayload(payload)),
+  doUpdate: (payload) => knowledgeApi.updateKnowledgeArticle(formatArticlePayload(payload)),
   doDelete: knowledgeApi.deleteKnowledgeArticle,
   refresh: () => $table.value?.handleSearch(),
 })
@@ -63,6 +73,12 @@ const statusOptions = [
   { label: '草稿', value: 'draft' },
   { label: '已发布', value: 'published' },
 ]
+
+const modalBlockSummary = computed(() => {
+  const blocks = modalForm.value.blocks || []
+  const fileCount = blocks.filter((block) => block.block_type !== 'text').length
+  return `当前共 ${fileCount} 个文件块`
+})
 
 const rules = {
   title: [
@@ -80,11 +96,17 @@ const rules = {
       trigger: ['blur', 'change'],
     },
   ],
-  content: [
+  blocks: [
     {
       required: true,
-      message: '请输入文章内容',
-      trigger: ['input', 'blur', 'change'],
+      trigger: ['change', 'blur'],
+      validator(_rule, value) {
+        if (!Array.isArray(value) || !value.length) {
+          return new Error('请至少上传一个文件')
+        }
+
+        return true
+      },
     },
   ],
 }
@@ -97,6 +119,25 @@ onMounted(async () => {
 async function fetchCategories() {
   const { data } = await knowledgeApi.getKnowledgeCategoryList()
   categoryOptions.value = data
+}
+
+function formatArticlePayload(form) {
+  const payload = {
+    title: form.title,
+    category_id: form.category_id,
+    summary: form.summary || '',
+    content: '',
+    tags: Array.isArray(form.tags) ? [...form.tags] : [],
+    status: form.status,
+    is_top: isAdmin.value ? !!form.is_top : false,
+    blocks: stripBlockClientFields(form.blocks || []),
+  }
+
+  if (form.id) {
+    payload.id = form.id
+  }
+
+  return payload
 }
 
 function normalizeArticlePayload(row, overrides = {}) {
@@ -116,11 +157,14 @@ function normalizeArticlePayload(row, overrides = {}) {
 function openAddArticle() {
   handleAdd()
   modalForm.value.tags = []
+  modalForm.value.blocks = []
 }
 
-function openEditArticle(row) {
-  handleEdit(row)
-  modalForm.value.tags = Array.isArray(row.tags) ? [...row.tags] : []
+async function openEditArticle(row) {
+  const { data } = await knowledgeApi.getKnowledgeArticleById({ article_id: row.id })
+  handleEdit(data)
+  modalForm.value.tags = Array.isArray(data.tags) ? [...data.tags] : []
+  modalForm.value.blocks = normalizeBlocks(data.blocks || [])
   delete modalForm.value.category
 }
 
@@ -174,6 +218,16 @@ const columns = [
     },
   },
   {
+    title: '发布人',
+    key: 'publisher.username',
+    align: 'center',
+    width: 90,
+    ellipsis: { tooltip: true },
+    render(row) {
+      return h('span', row.publisher?.alias || row.publisher?.username || '-')
+    },
+  },
+  {
     title: '状态',
     key: 'status',
     align: 'center',
@@ -188,6 +242,15 @@ const columns = [
     align: 'center',
     width: 70,
     render(row) {
+      if (!isAdmin.value) {
+        return h(
+          NTag,
+          { type: row.is_top ? 'warning' : 'default', size: 'small' },
+          {
+            default: () => (row.is_top ? '是' : '否'),
+          }
+        )
+      }
       return h(NSwitch, {
         size: 'small',
         rubberBand: false,
@@ -338,7 +401,7 @@ const columns = [
 
     <CrudModal
       v-model:visible="modalVisible"
-      width="900px"
+      width="1100px"
       :title="modalTitle"
       :loading="modalLoading"
       @save="handleSave"
@@ -347,7 +410,7 @@ const columns = [
         ref="modalFormRef"
         label-placement="left"
         label-align="left"
-        :label-width="80"
+        :label-width="88"
         :model="modalForm"
         :rules="rules"
       >
@@ -377,20 +440,34 @@ const columns = [
           <NDynamicTags v-model:value="modalForm.tags" />
         </NFormItem>
         <NFormItem label="文章状态" path="status">
-          <NSelect v-model:value="modalForm.status" :options="statusOptions" placeholder="请选择状态" />
+          <NSelect
+            v-model:value="modalForm.status"
+            :options="statusOptions"
+            placeholder="请选择状态"
+          />
         </NFormItem>
-        <NFormItem label="是否置顶" path="is_top">
+        <NFormItem v-if="isAdmin" label="是否置顶" path="is_top">
           <NSwitch v-model:value="modalForm.is_top" />
         </NFormItem>
-        <NFormItem label="文章内容" path="content">
-          <NInput
-            v-model:value="modalForm.content"
-            type="textarea"
-            placeholder="请输入文章内容"
-            :autosize="{ minRows: 12, maxRows: 20 }"
-          />
+        <NFormItem label="内容块" path="blocks">
+          <div class="article-form-blocks">
+            <div class="article-form-blocks-summary">{{ modalBlockSummary }}</div>
+            <ArticleBlockEditor v-model="modalForm.blocks" />
+          </div>
         </NFormItem>
       </NForm>
     </CrudModal>
   </CommonPage>
 </template>
+
+<style scoped lang="scss">
+.article-form-blocks {
+  width: 100%;
+}
+
+.article-form-blocks-summary {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--n-text-color-2, #64748b);
+}
+</style>

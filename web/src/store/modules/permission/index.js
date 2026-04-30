@@ -57,6 +57,18 @@ function buildRoutes(routes = []) {
   })
 }
 
+const HIDDEN_MENU_NAMES = ['ErrorPage', '错误页', '一级菜单']
+
+function isVisibleMenu(route) {
+  const title = route.meta?.title
+  return (
+    route.name &&
+    !route.isHidden &&
+    !HIDDEN_MENU_NAMES.includes(route.name) &&
+    !HIDDEN_MENU_NAMES.includes(title)
+  )
+}
+
 export const usePermissionStore = defineStore('permission', {
   state() {
     return {
@@ -69,7 +81,7 @@ export const usePermissionStore = defineStore('permission', {
       return basicRoutes.concat(this.accessRoutes)
     },
     menus() {
-      return this.routes.filter((route) => route.name && !route.isHidden)
+      return this.routes.filter((route) => isVisibleMenu(route))
     },
     apis() {
       return this.accessApis

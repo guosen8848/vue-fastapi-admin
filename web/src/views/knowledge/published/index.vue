@@ -1,13 +1,27 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { NButton, NEmpty, NInput, NLayout, NLayoutContent, NLayoutSider, NSpin, NTag, NTree } from 'naive-ui'
+import {
+  NButton,
+  NEmpty,
+  NInput,
+  NLayout,
+  NLayoutContent,
+  NLayoutSider,
+  NSpin,
+  NTag,
+  NTree,
+} from 'naive-ui'
 
 import CommonPage from '@/components/page/CommonPage.vue'
 import knowledgeApi from '@/api/knowledge'
+import { useAppStore } from '@/store'
 import { formatDate } from '@/utils'
+
+import ArticleBlockRenderer from '../components/ArticleBlockRenderer.vue'
 
 defineOptions({ name: '知识浏览' })
 
+const appStore = useAppStore()
 const treeLoading = ref(false)
 const detailLoading = ref(false)
 
@@ -154,17 +168,20 @@ function renderPrefix({ option }) {
   }
   return ''
 }
+
+function getPublisherName(article) {
+  return article?.publisher?.alias || article?.publisher?.username || '-'
+}
 </script>
 
 <template>
-  <NLayout has-sider class="knowledge-browser-layout">
+  <NLayout has-sider class="knowledge-browser-layout" :class="{ 'is-dark': appStore.isDark }">
     <NLayoutSider
       bordered
       content-style="padding: 24px 20px;"
       :collapsed-width="0"
       :width="300"
       show-trigger="arrow-circle"
-      collapse-mode="width"
       class="knowledge-browser-sider"
     >
       <div class="knowledge-browser-sider-header">
@@ -176,8 +193,8 @@ function renderPrefix({ option }) {
         <NEmpty v-if="!articleTree.length" description="暂无可浏览文章" />
         <NTree
           v-else
-          block-line
-          default-expand-all
+          :block-line="true"
+          :default-expand-all="true"
           key-field="key"
           label-field="label"
           :data="articleTree"
@@ -212,6 +229,7 @@ function renderPrefix({ option }) {
                 <h2>{{ articleDetail.title }}</h2>
                 <div class="knowledge-article-meta">
                   <span>分类：{{ articleDetail.category?.name || '-' }}</span>
+                  <span>发布人：{{ getPublisherName(articleDetail) }}</span>
                   <span>
                     发布时间：{{
                       articleDetail.published_at
@@ -234,9 +252,7 @@ function renderPrefix({ option }) {
               {{ articleDetail.summary }}
             </div>
 
-            <div class="knowledge-article-content">
-              {{ articleDetail.content }}
-            </div>
+            <ArticleBlockRenderer :blocks="articleDetail.blocks || []" preview-scope="published" />
           </article>
         </NSpin>
       </CommonPage>
@@ -246,13 +262,42 @@ function renderPrefix({ option }) {
 
 <style scoped lang="scss">
 .knowledge-browser-layout {
+  --knowledge-bg: #fff;
+  --knowledge-panel-bg: #fff;
+  --knowledge-fill: #f8fafc;
+  --knowledge-border: #eef2f7;
+  --knowledge-text: #111827;
+  --knowledge-title: #1f2937;
+  --knowledge-muted: #6b7280;
+  --knowledge-tree-text: #4b5563;
+  --knowledge-tree-category: #374151;
+  --knowledge-active-bg: #eff6ff;
+  --knowledge-hover-bg: #f5f8ff;
+  --knowledge-active-text: #2563eb;
+
   width: 100%;
   height: 100%;
   min-height: calc(100vh - 120px);
+  background: var(--knowledge-bg);
+}
+
+.knowledge-browser-layout.is-dark {
+  --knowledge-bg: #101014;
+  --knowledge-panel-bg: #000;
+  --knowledge-fill: #18191d;
+  --knowledge-border: #2a2b30;
+  --knowledge-text: rgba(255, 255, 255, 0.9);
+  --knowledge-title: rgba(255, 255, 255, 0.9);
+  --knowledge-muted: rgba(255, 255, 255, 0.62);
+  --knowledge-tree-text: rgba(255, 255, 255, 0.72);
+  --knowledge-tree-category: rgba(255, 255, 255, 0.86);
+  --knowledge-active-bg: rgba(244, 81, 30, 0.18);
+  --knowledge-hover-bg: #18191d;
+  --knowledge-active-text: #f4511e;
 }
 
 .knowledge-browser-sider {
-  background: #fff;
+  background: var(--knowledge-panel-bg);
 }
 
 .knowledge-browser-sider-header {
@@ -262,20 +307,21 @@ function renderPrefix({ option }) {
     margin: 0;
     font-size: 28px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--knowledge-title);
     line-height: 1.2;
   }
 
   p {
     margin: 10px 0 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--knowledge-muted);
     line-height: 1.6;
   }
 }
 
 .knowledge-browser-content {
   min-width: 0;
+  background: var(--knowledge-bg);
 }
 
 .knowledge-browser-header {
@@ -302,7 +348,7 @@ function renderPrefix({ option }) {
   gap: 16px;
   margin-bottom: 18px;
   padding-bottom: 18px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--knowledge-border);
 }
 
 .knowledge-article-title-wrap h2 {
@@ -310,7 +356,7 @@ function renderPrefix({ option }) {
   font-size: 28px;
   font-weight: 700;
   line-height: 1.35;
-  color: #111827;
+  color: var(--knowledge-text);
 }
 
 .knowledge-article-meta {
@@ -319,7 +365,7 @@ function renderPrefix({ option }) {
   gap: 12px;
   margin-top: 12px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--knowledge-muted);
 }
 
 .knowledge-article-tags {
@@ -332,18 +378,11 @@ function renderPrefix({ option }) {
 .knowledge-article-summary {
   margin-bottom: 18px;
   padding: 14px 16px;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--knowledge-border);
+  border-radius: 8px;
+  background: var(--knowledge-fill);
+  color: var(--knowledge-tree-text);
   line-height: 1.75;
-}
-
-.knowledge-article-content {
-  font-size: 15px;
-  line-height: 1.95;
-  color: #1f2937;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 :deep(.knowledge-tree-node .n-tree-node-content) {
@@ -353,22 +392,22 @@ function renderPrefix({ option }) {
 
 :deep(.knowledge-tree-node-category .n-tree-node-content) {
   font-weight: 600;
-  color: #374151;
+  color: var(--knowledge-tree-category);
 }
 
 :deep(.knowledge-tree-node-article .n-tree-node-content) {
-  color: #4b5563;
+  color: var(--knowledge-tree-text);
   cursor: pointer;
 }
 
 :deep(.knowledge-tree-node-article .n-tree-node-content:hover) {
-  background: #f5f8ff;
-  color: #2563eb;
+  background: var(--knowledge-hover-bg);
+  color: var(--knowledge-active-text);
 }
 
 :deep(.knowledge-tree-node-article.is-active .n-tree-node-content) {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--knowledge-active-bg);
+  color: var(--knowledge-active-text);
 }
 
 @media (max-width: 960px) {

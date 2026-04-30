@@ -1,1 +1,15 @@
+.git
+.venv
+.ruff_cache
+.vscode
+__pycache__
+*.py[cod]
+*.log
+db.sqlite3
+db.sqlite3-*
+tmp_test
+storage
+app/logs
 web/node_modules
+web/dist
+web/stats.html

@@ -58,10 +58,11 @@ import bgImg from '@/assets/images/login_bg.webp'
 import api from '@/api'
 import { addDynamicRoutes } from '@/router'
 import { useI18n } from 'vue-i18n'
+import { useUserStore } from '@/store'
 
 const router = useRouter()
-const { query } = useRoute()
 const { t } = useI18n({ useScope: 'global' })
+const userStore = useUserStore()
 
 const loginInfo = ref({
   username: '',
@@ -69,6 +70,7 @@ const loginInfo = ref({
 })
 
 initLoginInfo()
+userStore.resetSessionState()
 
 function initLoginInfo() {
   const localLoginInfo = lStorage.get('loginInfo')
@@ -92,14 +94,7 @@ async function handleLogin() {
     $message.success(t('views.login.message_login_success'))
     setToken(res.data.access_token)
     await addDynamicRoutes()
-    if (query.redirect) {
-      const path = query.redirect
-      console.log('path', { path, query })
-      Reflect.deleteProperty(query, 'redirect')
-      router.push({ path, query })
-    } else {
-      router.push('/')
-    }
+    router.push('/workbench')
   } catch (e) {
     console.error('login error', e.error)
   }

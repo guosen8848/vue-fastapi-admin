@@ -21,6 +21,7 @@ from app.core.exceptions import (
     ResponseValidationError,
     ResponseValidationHandle,
 )
+from app.exam import init_exam_data
 from app.knowledge import init_knowledge_data
 from app.log import logger
 from app.models.admin import Api, Menu, Role
@@ -170,7 +171,7 @@ async def init_menus():
             order=2,
             parent_id=0,
             icon="material-symbols:featured-play-list-outline",
-            is_hidden=False,
+            is_hidden=True,
             component="/top-menu",
             keepalive=False,
             redirect="",
@@ -233,3 +234,4 @@ async def init_data():
     await init_apis()
     await init_knowledge_data()
     await init_roles()
+    await init_exam_data()

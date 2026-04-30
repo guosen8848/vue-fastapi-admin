@@ -109,6 +109,8 @@ function handleMenuSelect(key, item) {
 
 <style lang="scss">
 .side-menu:not(.n-menu--collapsed) {
+  user-select: none;
+
   .n-menu-item-content {
     &::before {
       left: 5px;

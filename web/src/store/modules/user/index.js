@@ -34,6 +34,14 @@ export const useUserStore = defineStore('user', {
     },
   },
   actions: {
+    resetSessionState() {
+      const { resetTags } = useTagsStore()
+      const { resetPermission } = usePermissionStore()
+      resetTags()
+      resetPermission()
+      resetRouter()
+      this.$reset()
+    },
     async getUserInfo() {
       try {
         const res = await api.getUserInfo()
@@ -49,13 +57,8 @@ export const useUserStore = defineStore('user', {
       }
     },
     async logout() {
-      const { resetTags } = useTagsStore()
-      const { resetPermission } = usePermissionStore()
       removeToken()
-      resetTags()
-      resetPermission()
-      resetRouter()
-      this.$reset()
+      this.resetSessionState()
       toLogin()
     },
     setUserInfo(userInfo = {}) {

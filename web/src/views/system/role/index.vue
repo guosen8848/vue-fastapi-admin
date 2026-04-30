@@ -66,16 +66,20 @@ function buildApiTree(data) {
   const groupedData = {}
 
   data.forEach((item) => {
-    const tags = item['tags']
-    const pathParts = item['path'].split('/')
-    const path = pathParts.slice(0, -1).join('/')
-    const summary = tags.charAt(0).toUpperCase() + tags.slice(1)
+    const tags = item['tags'] || '未分组'
     const unique_id = item['method'].toLowerCase() + item['path']
-    if (!(path in groupedData)) {
-      groupedData[path] = { unique_id: path, path: path, summary: summary, children: [] }
+    const groupKey = `tag:${tags}`
+
+    if (!(groupKey in groupedData)) {
+      groupedData[groupKey] = {
+        unique_id: groupKey,
+        path: groupKey,
+        summary: tags,
+        children: [],
+      }
     }
 
-    groupedData[path].children.push({
+    groupedData[groupKey].children.push({
       id: item['id'],
       path: item['path'],
       method: item['method'],

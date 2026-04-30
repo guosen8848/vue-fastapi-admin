@@ -1,3 +1,4 @@
 # 新增model需要在这里导入
 from .admin import *
+from app.exam.models import *
 from app.knowledge.models import *

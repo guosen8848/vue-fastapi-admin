@@ -59,29 +59,18 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
         # 获取查询参数
         for key, value in request.query_params.items():
             args[key] = value
-
-        # 获取请求体
-        if request.method in ["POST", "PUT", "PATCH"]:
-            try:
-                body = await request.json()
-                args.update(body)
-            except json.JSONDecodeError:
-                try:
-                    body = await request.form()
-                    # args.update(body)
-                    for k, v in body.items():
-                        if hasattr(v, "filename"):  # 文件上传行为
-                            args[k] = v.filename
-                        elif isinstance(v, list) and v and hasattr(v[0], "filename"):
-                            args[k] = [file.filename for file in v]
-                        else:
-                            args[k] = v
-                except Exception:
-                    pass
-
         return args
 
     async def get_response_body(self, request: Request, response: Response) -> Any:
+        content_type = (response.headers.get("content-type") or "").lower()
+        content_disposition = response.headers.get("content-disposition") or ""
+
+        # 下载类或非 JSON 响应不记录原始 body，避免把文件内容写入 JSONField。
+        if "attachment" in content_disposition.lower() or (
+            content_type and "application/json" not in content_type
+        ):
+            return self.summarize_non_json_response(response)
+
         # 检查Content-Length
         content_length = response.headers.get("content-length")
         if content_length and int(content_length) > self.max_body_size:
@@ -112,7 +101,14 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
             except Exception:
                 return None
 
-        return self.lenient_json(body)
+        data = self.lenient_json(body)
+        if isinstance(data, (bytes, str)):
+            return {
+                "kind": "text_response",
+                "content_type": content_type or None,
+                "preview": self.build_text_preview(data),
+            }
+        return data
 
     def lenient_json(self, v: Any) -> Any:
         if isinstance(v, (str, bytes)):
@@ -122,9 +118,27 @@ class HttpAuditLogMiddleware(BaseHTTPMiddleware):
                 pass
         return v
 
+    def build_text_preview(self, body: Any, limit: int = 500) -> str:
+        if isinstance(body, bytes):
+            text = body.decode("utf-8", errors="replace")
+        else:
+            text = str(body)
+        if len(text) > limit:
+            return text[:limit] + "...(truncated)"
+        return text
+
+    def summarize_non_json_response(self, response: Response) -> dict[str, Any]:
+        return {
+            "kind": "non_json_response",
+            "content_type": response.headers.get("content-type"),
+            "content_length": response.headers.get("content-length"),
+            "content_disposition": response.headers.get("content-disposition"),
+        }
+
     async def _async_iter(self, items: list[bytes]) -> AsyncGenerator[bytes, None]:
         for item in items:
             yield item
+
 
     async def get_request_log(self, request: Request, response: Response) -> dict:
         """

@@ -1,33 +1,90 @@
-FROM node:18.12.0-alpine3.16 AS web
+ARG NODE_IMAGE=node:20-bookworm-slim
+ARG PYTHON_IMAGE=python:3.11-slim-bookworm
+ARG PNPM_VERSION=10.33.1
+
+
+FROM ${NODE_IMAGE} AS web-builder
+
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+ARG PNPM_VERSION
+
+WORKDIR /build/web
+
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN npm install -g pnpm@${PNPM_VERSION} --registry=${NPM_REGISTRY} \
+    && pnpm config set registry ${NPM_REGISTRY} \
+    && pnpm install --frozen-lockfile
+
+COPY web/ ./
+RUN pnpm run build
+
+
+FROM ${PYTHON_IMAGE} AS python-base
+
+ARG APT_MIRROR=https://mirrors.ustc.edu.cn/debian
+ARG APT_SECURITY_MIRROR=https://mirrors.ustc.edu.cn/debian-security
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    TZ=Asia/Shanghai \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i "s|http://security.debian.org/debian-security|${APT_SECURITY_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+      sed -i "s|http://deb.debian.org/debian|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates tzdata; \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime; \
+    echo "${TZ}" > /etc/timezone; \
+    rm -rf /var/lib/apt/lists/*
+
+
+FROM python-base AS python-builder
+
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+
+WORKDIR /build
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential gcc libffi-dev python3-dev; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip setuptools wheel -i ${PIP_INDEX_URL} \
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt -i ${PIP_INDEX_URL}
+
+
+FROM python-base AS runtime
 
 WORKDIR /opt/vue-fastapi-admin
-COPY /web ./web
-RUN cd /opt/vue-fastapi-admin/web && npm i --registry=https://registry.npmmirror.com && npm run build
 
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends nginx; \
+    rm -rf /var/lib/apt/lists/*; \
+    rm -f /etc/nginx/sites-enabled/default
 
-FROM python:3.11-slim-bullseye
+COPY --from=python-builder /opt/venv /opt/venv
+COPY app ./app
+COPY migrations ./migrations
+COPY pyproject.toml requirements.txt run.py ./
+COPY deploy/web.conf /etc/nginx/sites-available/web.conf
+COPY deploy/entrypoint.sh /entrypoint.sh
+COPY --from=web-builder /build/web/dist ./web/dist
 
-WORKDIR /opt/vue-fastapi-admin
-ADD . .
-COPY /deploy/entrypoint.sh .
+RUN set -eux; \
+    ln -sf /etc/nginx/sites-available/web.conf /etc/nginx/sites-enabled/web.conf; \
+    chmod +x /entrypoint.sh; \
+    mkdir -p storage/knowledge storage/exam/banks app/logs
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=core-apt \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked,id=core-apt \
-    sed -i "s@http://.*.debian.org@http://mirrors.ustc.edu.cn@g" /etc/apt/sources.list \
-    && rm -f /etc/apt/apt.conf.d/docker-clean \
-    && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-    && echo "Asia/Shanghai" > /etc/timezone \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends gcc python3-dev bash nginx vim curl procps net-tools
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/opt/vue-fastapi-admin
 
-RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-COPY --from=web /opt/vue-fastapi-admin/web/dist /opt/vue-fastapi-admin/web/dist
-ADD /deploy/web.conf /etc/nginx/sites-available/web.conf
-RUN rm -f /etc/nginx/sites-enabled/default \ 
-    && ln -s /etc/nginx/sites-available/web.conf /etc/nginx/sites-enabled/ 
-
-ENV LANG=zh_CN.UTF-8
 EXPOSE 80
 
-ENTRYPOINT [ "sh", "entrypoint.sh" ]
+ENTRYPOINT ["/entrypoint.sh"]

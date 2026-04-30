@@ -12,7 +12,7 @@ export function createAuthGuard(router) {
     }
 
     /** 有token的情况 */
-    if (to.path === '/login') return { path: '/' }
+    if (to.path === '/login') return { path: '/workbench' }
     return true
   })
 }

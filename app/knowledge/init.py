@@ -76,6 +76,9 @@ async def init_knowledge_apis():
         ("GET", "/api/v1/knowledge/published/category/list"),
         ("GET", "/api/v1/knowledge/published/article/list"),
         ("GET", "/api/v1/knowledge/published/article/get"),
+        ("POST", "/api/v1/knowledge/article/block/upload"),
+        ("GET", "/api/v1/knowledge/article/block/file"),
+        ("GET", "/api/v1/knowledge/published/article/block/file"),
     ]
     exists = True
     for method, path in required_apis:

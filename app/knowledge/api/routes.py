@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, File, Query, UploadFile
+from fastapi.responses import FileResponse
 
 from app.core.ctx import CTX_USER_ID
 from app.knowledge.constants import KnowledgeArticleStatus
@@ -69,6 +70,7 @@ async def list_knowledge_article(
         category_id=category_id,
         status=status,
         is_top=is_top,
+        user_id=CTX_USER_ID.get(),
     )
     return SuccessExtra(data=data, total=total, page=page, page_size=page_size)
 
@@ -77,7 +79,10 @@ async def list_knowledge_article(
 async def get_knowledge_article(
     article_id: int = Query(..., description="文章ID"),
 ):
-    data = await knowledge_article_controller.get_article_detail(article_id=article_id)
+    data = await knowledge_article_controller.get_article_detail(
+        article_id=article_id,
+        user_id=CTX_USER_ID.get(),
+    )
     return Success(data=data)
 
 
@@ -117,6 +122,39 @@ async def get_published_knowledge_article(
     return Success(data=data)
 
 
+@router.post("/article/block/upload", summary="上传知识文章内容文件")
+async def upload_knowledge_article_block(
+    file: UploadFile = File(..., description="知识文件"),
+):
+    data = await knowledge_article_controller.upload_article_block(file=file)
+    return Success(data=data)
+
+
+@router.get("/article/block/file", summary="查看知识文章内容文件")
+async def get_knowledge_article_block_file(
+    block_id: int | None = Query(None, description="内容块ID"),
+    temp_token: str | None = Query(None, description="临时上传令牌"),
+):
+    data = await knowledge_article_controller.get_block_file(
+        block_id=block_id,
+        temp_token=temp_token,
+        user_id=CTX_USER_ID.get(),
+    )
+    return FileResponse(data["path"], media_type=data["mime_type"], filename=data["file_name"])
+
+
+@router.get("/published/article/block/file", summary="查看已发布知识文章内容文件")
+async def get_published_knowledge_article_block_file(
+    block_id: int = Query(..., description="内容块ID"),
+):
+    data = await knowledge_article_controller.get_block_file(
+        block_id=block_id,
+        status=KnowledgeArticleStatus.PUBLISHED,
+        active_only=True,
+    )
+    return FileResponse(data["path"], media_type=data["mime_type"], filename=data["file_name"])
+
+
 @router.post("/article/create", summary="创建知识文章")
 async def create_knowledge_article(
     article_in: KnowledgeArticleCreate,
@@ -137,5 +175,5 @@ async def update_knowledge_article(
 async def delete_knowledge_article(
     article_id: int = Query(..., description="文章ID"),
 ):
-    await knowledge_article_controller.remove(id=article_id)
+    await knowledge_article_controller.delete_article(article_id=article_id, user_id=CTX_USER_ID.get())
     return Success(msg="Deleted Successfully")

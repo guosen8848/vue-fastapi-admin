@@ -1,6 +1,6 @@
 from tortoise import fields
 
-from app.knowledge.constants import KnowledgeArticleStatus
+from app.knowledge.constants import KnowledgeArticleBlockType, KnowledgeArticleStatus
 from app.models.base import BaseModel, TimestampMixin
 
 
@@ -34,3 +34,21 @@ class KnowledgeArticle(BaseModel, TimestampMixin):
 
     class Meta:
         table = "knowledge_article"
+
+
+class KnowledgeArticleBlock(BaseModel, TimestampMixin):
+    article_id = fields.IntField(description="文章ID", index=True)
+    block_type = fields.CharEnumField(KnowledgeArticleBlockType, description="内容块类型", index=True)
+    sort_order = fields.IntField(default=0, description="排序", index=True)
+    text_content = fields.TextField(null=True, description="文本内容")
+    file_name = fields.CharField(max_length=255, null=True, description="原始文件名")
+    file_ext = fields.CharField(max_length=20, null=True, description="文件扩展名")
+    mime_type = fields.CharField(max_length=100, null=True, description="文件MIME类型")
+    file_size = fields.BigIntField(null=True, description="文件大小")
+    file_path = fields.CharField(max_length=500, null=True, description="文件相对路径")
+    render_html = fields.TextField(null=True, description="HTML预览内容")
+    render_json = fields.JSONField(null=True, description="结构化预览内容")
+    extra_meta = fields.JSONField(null=True, description="额外元数据")
+
+    class Meta:
+        table = "knowledge_article_block"
