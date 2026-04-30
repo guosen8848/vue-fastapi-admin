@@ -1,30 +1,41 @@
 <template>
-  <n-breadcrumb>
-    <n-breadcrumb-item
-      v-for="item in route.matched.filter((item) => !!item.meta?.title)"
-      :key="item.path"
-      @click="handleBreadClick(item.path)"
-    >
-      <component :is="getIcon(item.meta)" />
-      {{ item.meta.title }}
+  <n-breadcrumb class="app-breadcrumb">
+    <n-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.path">
+      <span
+        class="app-breadcrumb-item"
+        :class="{ 'is-current': index === breadcrumbItems.length - 1 }"
+        @click="handleBreadClick(item, index)"
+      >
+        {{ item.meta.title }}
+      </span>
     </n-breadcrumb-item>
   </n-breadcrumb>
 </template>
 
 <script setup>
-import { renderCustomIcon, renderIcon } from '@/utils'
-
 const router = useRouter()
 const route = useRoute()
 
-function handleBreadClick(path) {
+const breadcrumbItems = computed(() => route.matched.filter((item) => !!item.meta?.title))
+
+function handleBreadClick(item, index) {
+  if (index === breadcrumbItems.value.length - 1) return
+  const path = item.path
   if (path === route.path) return
   router.push(path)
 }
-
-function getIcon(meta) {
-  if (meta?.customIcon) return renderCustomIcon(meta.customIcon, { size: 18 })
-  if (meta?.icon) return renderIcon(meta.icon, { size: 18 })
-  return null
-}
 </script>
+
+<style scoped>
+.app-breadcrumb {
+  line-height: 1;
+}
+
+.app-breadcrumb-item {
+  cursor: pointer;
+}
+
+.app-breadcrumb-item.is-current {
+  cursor: default;
+}
+</style>

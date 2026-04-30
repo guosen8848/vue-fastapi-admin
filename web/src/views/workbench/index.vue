@@ -1,7 +1,7 @@
 <template>
   <AppPage :show-footer="false">
     <n-spin :show="loading">
-      <div class="workbench-page">
+      <div class="workbench-page" :class="{ 'is-dark': appStore.isDark }">
         <n-card class="dashboard-card hero-card" :bordered="false">
           <div class="hero-main">
             <div class="hero-user">
@@ -122,9 +122,10 @@
 <script setup>
 import TheIcon from '@/components/icon/TheIcon.vue'
 import examApi from '@/api/exam'
-import { useUserStore } from '@/store'
+import { useAppStore, useUserStore } from '@/store'
 
 const router = useRouter()
+const appStore = useAppStore()
 const userStore = useUserStore()
 const loading = ref(false)
 const dashboard = ref({
@@ -187,7 +188,7 @@ const statCards = computed(() => {
         key: 'pending_grading_count',
         label: '待阅卷',
         value: stats.pending_grading_count || 0,
-        icon: 'material-symbols:grading-outline-rounded',
+        icon: 'mdi-account-box',
         tone: 'rose',
       },
     ]
@@ -348,14 +349,61 @@ function getAttemptStatusType(status) {
 
 <style scoped>
 .workbench-page {
+  --workbench-card-bg: #fff;
+  --workbench-card-border: transparent;
+  --workbench-card-shadow: 0 6px 18px rgb(20 24 40 / 6%);
+  --workbench-text: #1f2937;
+  --workbench-strong: #111827;
+  --workbench-muted: #6b7280;
+  --workbench-row-bg: #fff;
+  --workbench-row-border: #edf0f5;
+  --workbench-hover-border: var(--primary-color);
+  --workbench-hover-shadow: 0 6px 16px rgb(47 128 237 / 10%);
+  --workbench-blue-bg: #e0f2fe;
+  --workbench-blue-text: #0369a1;
+  --workbench-green-bg: #dcfce7;
+  --workbench-green-text: #15803d;
+  --workbench-amber-bg: #fef3c7;
+  --workbench-amber-text: #b45309;
+  --workbench-rose-bg: #ffe4e6;
+  --workbench-rose-text: #be123c;
+  --workbench-violet-bg: #ede9fe;
+  --workbench-violet-text: #6d28d9;
+
   display: flex;
   flex-direction: column;
   gap: 16px;
+  color: var(--workbench-text);
+}
+
+.workbench-page.is-dark {
+  --workbench-card-bg: #000;
+  --workbench-card-border: #2a2b30;
+  --workbench-card-shadow: none;
+  --workbench-text: rgba(255, 255, 255, 0.88);
+  --workbench-strong: rgba(255, 255, 255, 0.92);
+  --workbench-muted: rgba(255, 255, 255, 0.62);
+  --workbench-row-bg: #18191d;
+  --workbench-row-border: #2a2b30;
+  --workbench-hover-border: #60a5fa;
+  --workbench-hover-shadow: 0 8px 18px rgb(0 0 0 / 28%);
+  --workbench-blue-bg: rgba(59, 130, 246, 0.18);
+  --workbench-blue-text: #93c5fd;
+  --workbench-green-bg: rgba(34, 197, 94, 0.16);
+  --workbench-green-text: #86efac;
+  --workbench-amber-bg: rgba(245, 158, 11, 0.16);
+  --workbench-amber-text: #fcd34d;
+  --workbench-rose-bg: rgba(244, 63, 94, 0.16);
+  --workbench-rose-text: #fda4af;
+  --workbench-violet-bg: rgba(139, 92, 246, 0.18);
+  --workbench-violet-text: #c4b5fd;
 }
 
 .dashboard-card {
+  border: 1px solid var(--workbench-card-border);
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgb(20 24 40 / 6%);
+  background: var(--workbench-card-bg);
+  box-shadow: var(--workbench-card-shadow);
 }
 
 .hero-main,
@@ -388,7 +436,7 @@ function getAttemptStatusType(status) {
 
 .hero-title {
   margin: 0;
-  color: #1f2937;
+  color: var(--workbench-text);
   font-size: 22px;
   font-weight: 700;
 }
@@ -397,7 +445,7 @@ function getAttemptStatusType(status) {
 .stat-label,
 .row-meta {
   margin: 0;
-  color: #6b7280;
+  color: var(--workbench-muted);
 }
 
 .hero-subtitle {
@@ -427,7 +475,7 @@ function getAttemptStatusType(status) {
 
 .stat-value {
   margin: 0;
-  color: #111827;
+  color: var(--workbench-strong);
   font-size: 28px;
   font-weight: 700;
   line-height: 1.2;
@@ -439,28 +487,28 @@ function getAttemptStatusType(status) {
 }
 
 .blue .stat-icon {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--workbench-blue-bg);
+  color: var(--workbench-blue-text);
 }
 
 .green .stat-icon {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--workbench-green-bg);
+  color: var(--workbench-green-text);
 }
 
 .amber .stat-icon {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--workbench-amber-bg);
+  color: var(--workbench-amber-text);
 }
 
 .rose .stat-icon {
-  background: #ffe4e6;
-  color: #be123c;
+  background: var(--workbench-rose-bg);
+  color: var(--workbench-rose-text);
 }
 
 .violet .stat-icon {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--workbench-violet-bg);
+  color: var(--workbench-violet-text);
 }
 
 .content-grid {
@@ -471,7 +519,7 @@ function getAttemptStatusType(status) {
 
 .card-title {
   gap: 8px;
-  color: #1f2937;
+  color: var(--workbench-text);
   font-size: 16px;
   font-weight: 700;
 }
@@ -489,9 +537,10 @@ function getAttemptStatusType(status) {
   min-height: 64px;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid #edf0f5;
+  border: 1px solid var(--workbench-row-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--workbench-row-bg);
+  color: var(--workbench-text);
   padding: 12px;
   text-align: left;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -499,14 +548,14 @@ function getAttemptStatusType(status) {
 
 .info-row:hover,
 .compact-row:hover {
-  border-color: #2f80ed;
-  box-shadow: 0 6px 16px rgb(47 128 237 / 10%);
+  border-color: var(--workbench-hover-border);
+  box-shadow: var(--workbench-hover-shadow);
 }
 
 .row-title {
   margin: 0;
   overflow: hidden;
-  color: #1f2937;
+  color: var(--workbench-text);
   font-size: 14px;
   font-weight: 600;
   text-overflow: ellipsis;

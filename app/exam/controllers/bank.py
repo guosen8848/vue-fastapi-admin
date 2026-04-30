@@ -98,6 +98,25 @@ class ExamBankController(CRUDBase[ExamBank, ExamBankCreate, ExamBankUpdate]):
         )
         worksheet.append(
             [
+                "多选题",
+                "Python/基础",
+                "以下哪些是 Python 内置数据类型？",
+                "list",
+                "dict",
+                "array",
+                "tuple",
+                "",
+                "",
+                "A,B,D",
+                5,
+                "中等",
+                "list、dict、tuple 都是 Python 内置数据类型",
+                "",
+                "Python,数据类型",
+            ]
+        )
+        worksheet.append(
+            [
                 "判断题",
                 "FastAPI/基础",
                 "FastAPI 属于 Python Web 框架。",
@@ -132,6 +151,25 @@ class ExamBankController(CRUDBase[ExamBank, ExamBankCreate, ExamBankUpdate]):
                 "",
                 "SELECT * FROM table_name;",
                 "SQL",
+            ]
+        )
+        worksheet.append(
+            [
+                "简答题",
+                "系统设计/基础",
+                "请简述缓存穿透的含义及常见解决方案。",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                10,
+                "困难",
+                "",
+                "缓存穿透指查询不存在的数据导致请求直接打到数据库，常见方案包括布隆过滤器、缓存空值等。",
+                "系统设计,缓存",
             ]
         )
         stream = BytesIO()
